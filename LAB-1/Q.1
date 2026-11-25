@@ -1,0 +1,83 @@
+ Q-1: Implement NOT, AND, OR gates
+Implement NOT, AND, OR gates using only NAND gates in HDL. Draw
+
+the logic diagram for each and write the Boolean expression. Run the
+
+provided test scripts and capture the simulation output.
+
+
+
+
+NOT Gate
+
+Logic Diagram
+      +---+
+in ---|   |
+      | & |o--- out = in'
+in ---|   |
+      +---+
+      (Nand)
+
+
+HDL Implementation
+CHIP Not {
+    IN in;
+    OUT out;
+
+    PARTS:
+    Nand(a=in, b=in, out=out);
+}
+
+AND Gate
+
+
+Logic Diagram
+     +---+             +---+
+a ---|   |     w1      |   |
+     | & |o-----+------| & |o--- out = a . b
+b ---|   |      +------|   |
+     +---+             +---+
+    (Nand 1)          (Nand 2)
+
+
+HDL Implementation
+CHIP And {
+    IN a, b;
+    OUT out;
+
+    PARTS:
+    Nand(a=a, b=b, out=w1);
+    Nand(a=w1, b=w1, out=out);
+}
+
+
+
+OR Gate
+
+
+Logic Diagram
+     +---+
+a ---|   |   nota
+     | & |o-------+
+a ---|   |        |   +---+
+     +---+        +---|   |
+                      | & |o--- out = a + b
+     +---+        +---|   |
+b ---|   |   notb |   +---+
+     | & |o-------+
+b ---|   |
+     +---+
+
+
+HDL Implementation
+CHIP Or {
+    IN a, b;
+    OUT out;
+
+    PARTS:
+    Nand(a=a, b=a, out=nota);
+    Nand(a=b, b=b, out=notb);
+    Nand(a=nota, b=notb, out=out);
+}
+
+

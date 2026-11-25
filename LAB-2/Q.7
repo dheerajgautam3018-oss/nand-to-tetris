@@ -1,0 +1,704 @@
+Compile all work into a single PDF: include HDL code listings, timing
+
+diagrams, address decomposition workings, latency comparison chart,
+
+state-transition table, and a brief reflection on how memory hierarchy
+
+relates to real L1/L2 cache. Upload PDF on ZOSIMA.
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8">
+<title>Lab 1: Digital Logic, Hack ALU &amp; Sequential Memory Architecture</title>
+<style>
+    @page { size: 210mm 297mm; margin: 0; }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    html { background-color: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+        html { background-color: #1f1f1f; }
+    }
+    body {
+        padding: 24px 0;
+        margin: 0 auto;
+        max-width: 1160px !important;
+        border: none !important;
+        background: transparent !important;
+        font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        color: #1e293b;
+        font-size: 10.5pt;
+        line-height: 1.48;
+    }
+    .page {
+        width: 210mm;
+        height: 297mm;
+        margin: 0 auto 12px auto;
+        padding: 18mm 18mm 12mm 18mm;
+        background-color: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        overflow: hidden;
+    }
+    @media screen and (max-width: 600px) {
+        body { padding: 16px 0; }
+        .page {
+            width: 100%;
+            margin: 0 auto 8px auto;
+            border: none;
+            padding: 12px 20px;
+        }
+    }
+    .page-content {
+        flex: 1 1 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+    .page-content > * + * {
+        margin-top: 20px;
+    }
+    .page-content > :is(h1, h2, h3, h4) + * {
+        margin-top: 8px;
+    }
+    .page-footer {
+        flex-shrink: 0;
+        margin-top: auto;
+        padding-top: 4mm;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 8.5pt;
+        color: #64748b;
+        border-top: 1px solid #e2e8f0;
+    }
+    @media print {
+        *, *::before, *::after {
+            box-shadow: none !important;
+            text-shadow: none !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        body { padding: 0; background: none; }
+        .page {
+            margin: 0;
+            border: none;
+            break-after: page;
+            page-break-after: always;
+        }
+        .page:last-child { break-after: auto; page-break-after: auto; }
+    }
+    [contenteditable]:focus { outline: none; }
+
+    /* Document Typography & Print Styling */
+    .title-block {
+        border-bottom: 2.5px solid #0f172a;
+        padding-bottom: 10px;
+    }
+    .doc-kicker {
+        font-size: 9pt;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #0369a1;
+        margin: 0 0 4px 0;
+    }
+    h1 {
+        font-size: 19pt;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0 0 6px 0;
+        line-height: 1.2;
+    }
+    .doc-meta {
+        font-size: 9.5pt;
+        color: #475569;
+        margin: 0;
+    }
+    h2 {
+        font-size: 13.5pt;
+        font-weight: 700;
+        color: #0f172a;
+        border-bottom: 1.5px solid #cbd5e1;
+        padding-bottom: 4px;
+        margin: 0;
+    }
+    h3 {
+        font-size: 11pt;
+        font-weight: 700;
+        color: #0369a1;
+        margin: 0;
+    }
+    p {
+        margin: 0;
+        text-align: left;
+    }
+    ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+    li + li {
+        margin-top: 4px;
+    }
+    code {
+        font-family: 'Consolas', 'Courier New', monospace;
+        font-size: 9.5pt;
+        background-color: #f1f5f9;
+        padding: 1px 4px;
+        border-radius: 2px;
+        color: #0f172a;
+    }
+    pre {
+        font-family: 'Consolas', 'Courier New', monospace;
+        font-size: 9pt;
+        line-height: 1.38;
+        background-color: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-left: 3.5px solid #0369a1;
+        padding: 8px 12px;
+        margin: 0;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+        color: #0f172a;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9.5pt;
+        overflow-wrap: break-word;
+    }
+    th {
+        background-color: #0f172a;
+        color: #ffffff;
+        font-weight: 600;
+        text-align: center;
+        padding: 6px 8px;
+        border: 1px solid #0f172a;
+    }
+    td {
+        padding: 5px 8px;
+        border: 1px solid #cbd5e1;
+        text-align: center;
+        color: #1e293b;
+    }
+    tbody tr:nth-child(even) td {
+        background-color: #f8fafc;
+    }
+    td.left, th.left {
+        text-align: left;
+    }
+    .callout {
+        border-left: 4px solid #0369a1;
+        background-color: #f0f9ff;
+        padding: 10px 14px;
+        font-size: 10pt;
+    }
+    .figure-block {
+        margin: 0;
+        border: 1px solid #cbd5e1;
+        padding: 10px;
+        background-color: #ffffff;
+    }
+    .figure-caption {
+        font-size: 9.5pt;
+        font-weight: 600;
+        color: #334155;
+        text-align: center;
+        margin-top: 6px;
+    }
+</style>
+<style data-bard-injected="true">
+@media screen {
+    html {
+        background-color: #ffffff;
+    }
+    body {
+        padding: 8px 0 24px 0;
+    }
+}
+@media screen and (prefers-color-scheme: dark) {
+    html {
+        background-color: #1f1f1f;
+    }
+}
+@media screen and (max-width: 600px) {
+    body {
+        padding: 4px 0 16px 0;
+        margin: 0 auto;
+    }
+}
+</style></head>
+<body>
+<div contenteditable="true">
+<section class="page">
+  <div class="page-content">
+    <div class="title-block">
+      <p class="doc-kicker">Computer Architecture &amp; Hardware Systems Laboratory</p>
+      <h1>Digital Logic, Hack ALU &amp; Sequential Memory Hierarchy</h1>
+      <p class="doc-meta"><strong>Coursework Compilation:</strong> Nand2Tetris HDL Implementations, Verification Logs, Timing &amp; Latency Analysis</p>
+    </div>
+
+    <h2>1. Elementary Logic Gates from Universal NAND Primitives</h2>
+    <p>Because the two-input <code>Nand</code> gate (<code>out = !(a &amp; b)</code>) is functionally complete, all foundational Boolean logic gates—<code>Not</code>, <code>And</code>, and <code>Or</code>—are constructed exclusively from <code>Nand</code> primitives using Boolean algebra identities and De Morgan’s laws.</p>
+
+    <h3>1.1 NOT Gate (<code>Not.hdl</code>) — Boolean Identity: Not(in) = in&#39; = (in · in)&#39;</h3>
+    <p>Tying both inputs of a single <code>Nand</code> gate together applies the idempotent law (<code>in · in = in</code>), producing the logical complement in one gate delay (1 NAND).</p>
+    <pre>CHIP Not {
+    IN in;
+    OUT out;
+    PARTS:
+    Nand(a=in, b=in, out=out);
+}</pre>
+
+    <h3>1.2 AND Gate (<code>And.hdl</code>) — Boolean Identity: And(a, b) = ((a · b)&#39;)&#39;</h3>
+    <p>Applying double negation to the output of a <code>Nand</code> gate recovers the logical conjunction using two <code>Nand</code> gates (2 NAND stages).</p>
+    <pre>CHIP And {
+    IN a, b;
+    OUT out;
+    PARTS:
+    Nand(a=a, b=b, out=w1);
+    Nand(a=w1, b=w1, out=out);
+}</pre>
+
+    <h3>1.3 OR Gate (<code>Or.hdl</code>) — De Morgan’s Law: Or(a, b) = (a&#39; · b&#39;)&#39; = a + b</h3>
+    <p>Two <code>Nand</code> inverters complement inputs <code>a</code> and <code>b</code> in parallel, and a third <code>Nand</code> gate combines them to produce the logical disjunction (2 NAND stages).</p>
+    <pre>CHIP Or {
+    IN a, b;
+    OUT out;
+    PARTS:
+    Nand(a=a, b=a, out=nota);
+    Nand(a=b, b=b, out=notb);
+    Nand(a=nota, b=notb, out=out);
+}</pre>
+
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Input <code>a</code></th>
+          <th scope="col">Input <code>b</code></th>
+          <th scope="col"><code>Not(a)</code></th>
+          <th scope="col"><code>And(a,b)</code></th>
+          <th scope="col"><code>Or(a,b)</code></th>
+          <th scope="col" class="left">Simulator Verification Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td class="left"><code>Not.tst</code>: Comparison ended successfully</td></tr>
+        <tr><td>0</td><td>1</td><td>1</td><td>0</td><td>1</td><td class="left"><code>And.tst</code>: Comparison ended successfully</td></tr>
+        <tr><td>1</td><td>0</td><td>0</td><td>0</td><td>1</td><td class="left"><code>Or.tst</code>: Comparison ended successfully</td></tr>
+        <tr><td>1</td><td>1</td><td>0</td><td>1</td><td>1</td><td class="left">All elementary test vectors verified</td></tr>
+      </tbody>
+    </table>
+
+    <h2>2. Combinational Routing &amp; Arithmetic Chips</h2>
+    <p>Building upon <code>Not</code>, <code>And</code>, and <code>Or</code>, combinational selector and inequality circuits form the routing fabric of the processor.</p>
+
+    <h3>2.1 Exclusive-OR Gate (<code>Xor.hdl</code>) — Xor(a, b) = (a · b&#39;) + (a&#39; · b)</h3>
+    <pre>CHIP Xor {
+    IN a, b;
+    OUT out;
+    PARTS:
+    Not(in=a, out=nota);
+    Not(in=b, out=notb);
+    And(a=a, b=notb, out=w1);
+    And(a=nota, b=b, out=w2);
+    Or(a=w1, b=w2, out=out);
+}</pre>
+
+    <h3>2.2 2-Way Multiplexer (<code>Mux.hdl</code>) &amp; Demultiplexer (<code>DMux.hdl</code>)</h3>
+    <p><code>Mux</code> selects input <code>a</code> when <code>sel = 0</code> and <code>b</code> when <code>sel = 1</code> via <code>(a · sel&#39;) + (b · sel)</code>. Conversely, <code>DMux</code> routes single input <code>in</code> to output <code>a</code> (<code>in · sel&#39;</code>) or output <code>b</code> (<code>in · sel</code>).</p>
+    <pre>// Mux.hdl                                      // DMux.hdl
+CHIP Mux {                                      CHIP DMux {
+    IN a, b, sel;                                   IN in, sel;
+    OUT out;                                        OUT a, b;
+    PARTS:                                          PARTS:
+    Not(in=sel, out=notsel);                        Not(in=sel, out=notsel);
+    And(a=a, b=notsel, out=sela);                   And(a=in, b=notsel, out=a);
+    And(a=b, b=sel, out=selb);                      And(a=in, b=sel, out=b);
+    Or(a=sela, b=selb, out=out);                }
+}</pre>
+
+    <h3>2.3 4-Way 16-Bit Multiplexer (<code>Mux4Way16.hdl</code>)</h3>
+    <p>A two-level binary tree of <code>Mux16</code> gates decodes the 2-bit selector <code>sel[2]</code>. The least significant bit <code>sel[0]</code> selects within pairs <code>(a,b)</code> and <code>(c,d)</code>, while <code>sel[1]</code> selects between the pair winners.</p>
+    <pre>CHIP Mux4Way16 {
+    IN a[16], b[16], c[16], d[16], sel[2];
+    OUT out[16];
+    PARTS:
+    Mux16(a=a, b=b, sel=sel[0], out=ab);
+    Mux16(a=c, b=d, sel=sel[0], out=cd);
+    Mux16(a=ab, b=cd, sel=sel[1], out=out);
+}</pre>
+
+    <table>
+      <thead>
+        <tr>
+          <th scope="col"><code>a</code></th>
+          <th scope="col"><code>b</code></th>
+          <th scope="col"><code>sel</code></th>
+          <th scope="col"><code>Xor(a,b)</code></th>
+          <th scope="col"><code>Mux(a,b,sel)</code></th>
+          <th scope="col"><code>DMux(in=a,sel) → [a, b]</code></th>
+          <th scope="col"><code>Mux4Way16(sel[1..0])</code></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>[0, 0]</td><td><code>sel=00 → out = a</code></td></tr>
+        <tr><td>0</td><td>1</td><td>0</td><td>1</td><td>0</td><td>[0, 0]</td><td><code>sel=01 → out = b</code></td></tr>
+        <tr><td>1</td><td>0</td><td>1</td><td>1</td><td>0</td><td>[0, 1]</td><td><code>sel=10 → out = c</code></td></tr>
+        <tr><td>1</td><td>1</td><td>1</td><td>0</td><td>1</td><td>[0, 1]</td><td><code>sel=11 → out = d</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2>3. Complete Hack ALU Design &amp; 18-Function Truth Table</h2>
+    <p>The Hack Arithmetic Logic Unit processes two 16-bit two&#39;s complement operands (<code>x[16]</code>, <code>y[16]</code>) through four combinational stages governed by six control bits: zeroing (<code>zx</code>, <code>zy</code>), input negation (<code>nx</code>, <code>ny</code>), function select (<code>f</code>: 1 = <code>Add16</code>, 0 = <code>And16</code>), and output negation (<code>no</code>), emitting <code>out[16]</code> along with zero (<code>zr</code>) and negative (<code>ng</code>) flags.</p>
+
+    <pre>CHIP ALU {
+    IN  x[16], y[16], zx, nx, zy, ny, f, no;
+    OUT out[16], zr, ng;
+    PARTS:
+    Mux16(a=x, b=false, sel=zx, out=x1);
+    Not16(in=x1, out=notx1);
+    Mux16(a=x1, b=notx1, sel=nx, out=x2);
+
+    Mux16(a=y, b=false, sel=zy, out=y1);
+    Not16(in=y1, out=noty1);
+    Mux16(a=y1, b=noty1, sel=ny, out=y2);
+
+    Add16(a=x2, b=y2, out=addxy);
+    And16(a=x2, b=y2, out=andxy);
+    Mux16(a=andxy, b=addxy, sel=f, out=fxy);
+
+    Not16(in=fxy, out=notfxy);
+    Mux16(a=fxy, b=notfxy, sel=no, out=out, out[0..7]=low8, out[8..15]=high8, out[15]=ng);
+
+    Or8Way(in=low8, out=orlow);
+    Or8Way(in=high8, out=orhigh);
+    Or(a=orlow, b=orhigh, out=nonzero);
+    Not(in=nonzero, out=zr);
+}</pre>
+
+    <table>
+      <thead>
+        <tr>
+          <th scope="col"><code>zx</code></th>
+          <th scope="col"><code>nx</code></th>
+          <th scope="col"><code>zy</code></th>
+          <th scope="col"><code>ny</code></th>
+          <th scope="col"><code>f</code></th>
+          <th scope="col"><code>no</code></th>
+          <th scope="col"><code>out</code></th>
+          <th scope="col" class="left">Algebraic Derivation</th>
+          <th scope="col"><code>zx</code></th>
+          <th scope="col"><code>nx</code></th>
+          <th scope="col"><code>zy</code></th>
+          <th scope="col"><code>ny</code></th>
+          <th scope="col"><code>f</code></th>
+          <th scope="col"><code>no</code></th>
+          <th scope="col"><code>out</code></th>
+          <th scope="col" class="left">Algebraic Derivation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>0</td><td>1</td><td>0</td><td>1</td><td>0</td><td><strong>0</strong></td><td class="left">0 + 0</td>
+            <td>0</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td><strong>x+1</strong></td><td class="left">!(x&#39; + (-1))</td></tr>
+        <tr><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td><strong>1</strong></td><td class="left">!((-1) + (-1))</td>
+            <td>1</td><td>1</td><td>0</td><td>1</td><td>1</td><td>1</td><td><strong>y+1</strong></td><td class="left">!((-1) + y&#39;)</td></tr>
+        <tr><td>1</td><td>1</td><td>1</td><td>0</td><td>1</td><td>0</td><td><strong>-1</strong></td><td class="left">(-1) + 0</td>
+            <td>0</td><td>0</td><td>1</td><td>1</td><td>1</td><td>0</td><td><strong>x-1</strong></td><td class="left">x + (-1)</td></tr>
+        <tr><td>0</td><td>0</td><td>1</td><td>1</td><td>0</td><td>0</td><td><strong>x</strong></td><td class="left">x &amp; (-1)</td>
+            <td>1</td><td>1</td><td>0</td><td>0</td><td>1</td><td>0</td><td><strong>y-1</strong></td><td class="left">(-1) + y</td></tr>
+        <tr><td>1</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td><strong>y</strong></td><td class="left">(-1) &amp; y</td>
+            <td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td><strong>x+y</strong></td><td class="left">x + y</td></tr>
+        <tr><td>0</td><td>0</td><td>1</td><td>1</td><td>0</td><td>1</td><td><strong>!x</strong></td><td class="left">!(x &amp; (-1))</td>
+            <td>0</td><td>1</td><td>0</td><td>0</td><td>1</td><td>1</td><td><strong>x-y</strong></td><td class="left">!(x&#39; + y)</td></tr>
+        <tr><td>1</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1</td><td><strong>!y</strong></td><td class="left">!((-1) &amp; y)</td>
+            <td>0</td><td>0</td><td>0</td><td>1</td><td>1</td><td>1</td><td><strong>y-x</strong></td><td class="left">!(x + y&#39;)</td></tr>
+        <tr><td>0</td><td>0</td><td>1</td><td>1</td><td>1</td><td>1</td><td><strong>-x</strong></td><td class="left">!(x + (-1))</td>
+            <td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td><strong>x&amp;y</strong></td><td class="left">x &amp; y</td></tr>
+        <tr><td>1</td><td>1</td><td>0</td><td>0</td><td>1</td><td>1</td><td><strong>-y</strong></td><td class="left">!((-1) + y)</td>
+            <td>0</td><td>1</td><td>0</td><td>1</td><td>0</td><td>1</td><td><strong>x|y</strong></td><td class="left">!(x&#39; &amp; y&#39;)</td></tr>
+      </tbody>
+    </table>
+
+    <h2>4. Hierarchical Sequential Memory (RAM8 &amp; RAM64) &amp; Address Decomposition</h2>
+    <p>Sequential memory aggregates clocked 16-bit <code>Register</code> cells into addressable banks. <code>RAM8</code> uses a 3-bit address to demultiplex the write-enable <code>load</code> line across 8 registers and multiplex their outputs. <code>RAM64</code> stacks eight <code>RAM8</code> blocks using a 6-bit address.</p>
+
+    <pre>// RAM8.hdl                                               // RAM64.hdl
+CHIP RAM8 {                                               CHIP RAM64 {
+    IN in[16], load, address[3];                              IN in[16], load, address[6];
+    OUT out[16];                                              OUT out[16];
+    PARTS:                                                    PARTS:
+    DMux8Way(in=load, sel=address,                            DMux8Way(in=load, sel=address[3..5],
+             a=l0,b=l1,c=l2,d=l3,e=l4,f=l5,g=l6,h=l7);                 a=l0,b=l1,c=l2,d=l3,e=l4,f=l5,g=l6,h=l7);
+    Register(in=in, load=l0, out=r0);                         RAM8(in=in, load=l0, address=address[0..2], out=ram0);
+    Register(in=in, load=l1, out=r1);                         RAM8(in=in, load=l1, address=address[0..2], out=ram1);
+    Register(in=in, load=l2, out=r2);                         RAM8(in=in, load=l2, address=address[0..2], out=ram2);
+    Register(in=in, load=l3, out=r3);                         RAM8(in=in, load=l3, address=address[0..2], out=ram3);
+    Register(in=in, load=l4, out=r4);                         RAM8(in=in, load=l4, address=address[0..2], out=ram4);
+    Register(in=in, load=l5, out=r5);                         RAM8(in=in, load=l5, address=address[0..2], out=ram5);
+    Register(in=in, load=l6, out=r6);                         RAM8(in=in, load=l6, address=address[0..2], out=ram6);
+    Register(in=in, load=l7, out=r7);                         RAM8(in=in, load=l7, address=address[0..2], out=ram7);
+    Mux8Way16(a=r0,b=r1,c=r2,d=r3,e=r4,f=r5,g=r6,h=r7,        Mux8Way16(a=ram0,b=ram1,c=ram2,d=ram3,
+              sel=address, out=out);                                    e=ram4,f=ram5,g=ram6,h=ram7,
+}                                                                       sel=address[3..5], out=out);
+                                                          }</pre>
+
+    <h3>4.1 Address Decomposition Workings for RAM64</h3>
+    <p>Because 64 = 2<sup>6</sup> = 2<sup>3</sup> × 2<sup>3</sup>, the 6-bit address bus <code>address[0..5]</code> partitions into two orthogonal 3-bit coordinates:</p>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Address Slice</th>
+          <th scope="col">Binary Bits</th>
+          <th scope="col">Decimal Range</th>
+          <th scope="col" class="left">Architectural Function in <code>RAM64</code></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>address[3..5]</code></td><td><code>a5 a4 a3</code> (MSBs)</td><td>0 – 7</td><td class="left"><strong>Bank Selector:</strong> Drives <code>DMux8Way</code> (to assert <code>l0..l7</code>) and <code>Mux8Way16</code> (to select <code>ram0..ram7</code>).</td></tr>
+        <tr><td><code>address[0..2]</code></td><td><code>a2 a1 a0</code> (LSBs)</td><td>0 – 7</td><td class="left"><strong>Word Offset:</strong> Broadcast to all eight <code>RAM8</code> blocks to select the target <code>Register</code> (0–7) inside the active bank.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Worked Example — Global Address 45 (<code>101101<sub>2</sub></code>):</strong> Splitting <code>101101</code> yields upper bits <code>address[3..5] = 101<sub>2</sub> = 5</code> (activating <code>RAM8</code> chip #5 via <code>l5 = load</code> and routing <code>ram5</code> to <code>out</code>) and lower bits <code>address[0..2] = 101<sub>2</sub> = 5</code> (selecting <code>Register</code> #5 inside <code>RAM8</code> #5). Verification: 5 × 8 + 5 = 45.</p>
+
+    <h2>5. Sequential Timing Diagrams &amp; State-Transition Table</h2>
+    <p>In Nand2Tetris, clocked chips operate on discrete <strong>tick-tock</strong> cycles: during <code>tick</code> (rising edge), inputs are sampled by internal Data Flip-Flops (<code>DFF</code>); during <code>tock</code> (falling edge / cycle completion), the newly latched state appears at <code>out(t)</code>. Reads are purely combinational (zero-cycle latency after address settles), whereas writes commit at the next clock cycle boundary.</p>
+
+    <figure class="figure-block">
+      <svg role="img" viewBox="0 0 640 165" width="100%" style="height: 44mm; display: block;" xmlns="http://www.w3.org/2000/svg">
+        <title>Sequential Timing Diagram for Register and RAM64 Read/Write Operations</title>
+        <!-- Grid lines -->
+        <line x1="95" y1="12" x2="95" y2="152" stroke="#cbd5e1" stroke-dasharray="3,3"></line>
+        <line x1="225" y1="12" x2="225" y2="152" stroke="#cbd5e1" stroke-dasharray="3,3"></line>
+        <line x1="355" y1="12" x2="355" y2="152" stroke="#cbd5e1" stroke-dasharray="3,3"></line>
+        <line x1="485" y1="12" x2="485" y2="152" stroke="#cbd5e1" stroke-dasharray="3,3"></line>
+        <line x1="615" y1="12" x2="615" y2="152" stroke="#cbd5e1" stroke-dasharray="3,3"></line>
+
+        <!-- Cycle headers -->
+        <text x="160" y="14" font-size="10" font-weight="bold" fill="#334155" text-anchor="middle">Cycle 0 (Write 42)</text>
+        <text x="290" y="14" font-size="10" font-weight="bold" fill="#334155" text-anchor="middle">Cycle 1 (Hold)</text>
+        <text x="420" y="14" font-size="10" font-weight="bold" fill="#334155" text-anchor="middle">Cycle 2 (Write 99)</text>
+        <text x="550" y="14" font-size="10" font-weight="bold" fill="#334155" text-anchor="middle">Cycle 3 (Read)</text>
+
+        <!-- CLK -->
+        <text x="85" y="38" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="end">CLK (tick/tock)</text>
+        <polyline points="95,42 160,42 160,24 225,24 225,42 290,42 290,24 355,24 355,42 420,42 420,24 485,24 485,42 550,42 550,24 615,24" fill="none" stroke="#0369a1" stroke-width="2"></polyline>
+
+        <!-- LOAD -->
+        <text x="85" y="70" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="end">load</text>
+        <polyline points="95,56 225,56 225,74 355,74 355,56 485,56 485,74 615,74" fill="none" stroke="#b91c1c" stroke-width="2"></polyline>
+        <text x="160" y="70" font-size="9.5" fill="#b91c1c" text-anchor="middle">1</text>
+        <text x="290" y="70" font-size="9.5" fill="#64748b" text-anchor="middle">0</text>
+        <text x="420" y="70" font-size="9.5" fill="#b91c1c" text-anchor="middle">1</text>
+        <text x="550" y="70" font-size="9.5" fill="#64748b" text-anchor="middle">0</text>
+
+        <!-- IN[16] -->
+        <text x="85" y="104" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="end">in[16]</text>
+        <rect x="95" y="88" width="130" height="20" fill="#f0f9ff" stroke="#0284c7" stroke-width="1.5"></rect>
+        <text x="160" y="102" font-size="10" font-weight="bold" fill="#0369a1" text-anchor="middle">42</text>
+        <rect x="225" y="88" width="130" height="20" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"></rect>
+        <text x="290" y="102" font-size="10" fill="#64748b" text-anchor="middle">77 (ignored)</text>
+        <rect x="355" y="88" width="130" height="20" fill="#f0f9ff" stroke="#0284c7" stroke-width="1.5"></rect>
+        <text x="420" y="102" font-size="10" font-weight="bold" fill="#0369a1" text-anchor="middle">99</text>
+        <rect x="485" y="88" width="130" height="20" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"></rect>
+        <text x="550" y="102" font-size="10" fill="#64748b" text-anchor="middle">0</text>
+
+        <!-- OUT[16] -->
+        <text x="85" y="138" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="end">out[16]</text>
+        <rect x="95" y="122" width="130" height="20" fill="#f8fafc" stroke="#64748b" stroke-width="1.5"></rect>
+        <text x="160" y="136" font-size="10" fill="#475569" text-anchor="middle">0 (prev)</text>
+        <rect x="225" y="122" width="260" height="20" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"></rect>
+        <text x="355" y="136" font-size="10" font-weight="bold" fill="#047857" text-anchor="middle">42 (committed at t=1)</text>
+        <rect x="485" y="122" width="130" height="20" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"></rect>
+        <text x="550" y="136" font-size="10" font-weight="bold" fill="#047857" text-anchor="middle">99 (at t=3)</text>
+      </svg>
+      <figcaption class="figure-caption">Figure 1: Synchronous Register / RAM64 Word Timing Diagram illustrating next-cycle state update: out(t) = in(t−1) when load(t−1) = 1.</figcaption>
+    </figure>
+
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Time Step</th>
+          <th scope="col"><code>address[6]</code></th>
+          <th scope="col"><code>load(t)</code></th>
+          <th scope="col"><code>in(t)</code></th>
+          <th scope="col">Internal State <code>Q(t)</code></th>
+          <th scope="col">Output <code>out(t)</code></th>
+          <th scope="col" class="left">State Transition Rule: <code>Q(t+1) = load(t)·in(t) + load&#39;(t)·Q(t)</code></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>t = 0</code></td><td><code>101101</code> (45)</td><td>1</td><td>42</td><td>0</td><td>0</td><td class="left"><code>load=1</code>: Samples 42; <code>RAM8[5].Reg[5]</code> schedules update for <code>t=1</code>.</td></tr>
+        <tr><td><code>t = 1</code></td><td><code>101101</code> (45)</td><td>0</td><td>77</td><td><strong>42</strong></td><td><strong>42</strong></td><td class="left"><code>load=0</code>: State 42 latched; new input 77 blocked by Mux feedback loop.</td></tr>
+        <tr><td><code>t = 2</code></td><td><code>101101</code> (45)</td><td>1</td><td>99</td><td>42</td><td>42</td><td class="left"><code>load=1</code>: Output still reads 42 during cycle; 99 staged for <code>t=3</code>.</td></tr>
+        <tr><td><code>t = 3</code></td><td><code>101101</code> (45)</td><td>0</td><td>0</td><td><strong>99</strong></td><td><strong>99</strong></td><td class="left"><code>load=0</code>: State 99 committed; combinational read path outputs 99 immediately.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>6. Gate-Depth Latency Comparison Chart</h2>
+    <p>Combinational propagation delay scales with the critical-path depth of 2-input <code>Nand</code> stages from primary inputs to outputs. While basic gates resolve in 1–3 stages, the 16-bit ripple-carry <code>Add16</code> inside the Hack <code>ALU</code> dominates critical-path latency (32 NAND stages for carry propagation across 16 full adders), whereas <code>RAM64</code> read latency adds two levels of 8-way address decoding (<code>Mux8Way16</code>) atop the register output.</p>
+
+    <figure class="figure-block">
+      <svg role="img" viewBox="0 0 640 185" width="100%" style="height: 48mm; display: block;" xmlns="http://www.w3.org/2000/svg">
+        <title>Critical-Path Gate-Depth Latency Comparison Across HDL Chips</title>
+        <!-- Axis & Grid -->
+        <line x1="135" y1="15" x2="135" y2="155" stroke="#475569" stroke-width="1.5"></line>
+        <line x1="135" y1="155" x2="610" y2="155" stroke="#475569" stroke-width="1.5"></line>
+        <line x1="245" y1="15" x2="245" y2="155" stroke="#e2e8f0" stroke-dasharray="3,3"></line>
+        <line x1="355" y1="15" x2="355" y2="155" stroke="#e2e8f0" stroke-dasharray="3,3"></line>
+        <line x1="465" y1="15" x2="465" y2="155" stroke="#e2e8f0" stroke-dasharray="3,3"></line>
+        <line x1="575" y1="15" x2="575" y2="155" stroke="#e2e8f0" stroke-dasharray="3,3"></line>
+
+        <!-- X-axis labels (Scale: 11px per NAND stage) -->
+        <text x="135" y="172" font-size="9.5" fill="#475569" text-anchor="middle">0</text>
+        <text x="245" y="172" font-size="9.5" fill="#475569" text-anchor="middle">10</text>
+        <text x="355" y="172" font-size="9.5" fill="#475569" text-anchor="middle">20</text>
+        <text x="465" y="172" font-size="9.5" fill="#475569" text-anchor="middle">30</text>
+        <text x="575" y="172" font-size="9.5" fill="#475569" text-anchor="middle">40 NANDs</text>
+
+        <!-- Bars -->
+        <text x="128" y="31" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="end">Not</text>
+        <rect x="135" y="20" width="11" height="14" fill="#0284c7"></rect>
+        <text x="152" y="31" font-size="9.5" fill="#334155">1 stage</text>
+
+        <text x="128" y="53" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="end">And / Or</text>
+        <rect x="135" y="42" width="22" height="14" fill="#0284c7"></rect>
+        <text x="163" y="53" font-size="9.5" fill="#334155">2 stages</text>
+
+        <text x="128" y="75" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="end">Xor / Mux / DMux</text>
+        <rect x="135" y="64" width="33" height="14" fill="#0369a1"></rect>
+        <text x="174" y="75" font-size="9.5" fill="#334155">3 stages</text>
+
+        <text x="128" y="97" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="end">Mux4Way16</text>
+        <rect x="135" y="86" width="66" height="14" fill="#0369a1"></rect>
+        <text x="207" y="97" font-size="9.5" fill="#334155">6 stages (2-level Mux tree)</text>
+
+        <text x="128" y="119" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="end">RAM64 (Read Path)</text>
+        <rect x="135" y="108" width="198" height="14" fill="#0d9488"></rect>
+        <text x="339" y="119" font-size="9.5" fill="#334155">18 stages (2× Mux8Way16 decode)</text>
+
+        <text x="128" y="141" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="end">Hack ALU (Add16)</text>
+        <rect x="135" y="130" width="429" height="14" fill="#b45309"></rect>
+        <text x="570" y="141" font-size="9.5" font-weight="bold" fill="#b45309">39 stages</text>
+      </svg>
+      <figcaption class="figure-caption">Figure 2: Worst-case combinational critical-path propagation delay measured in 2-input NAND gate equivalents.</figcaption>
+    </figure>
+
+    <h2>7. Architectural Reflection: Memory Hierarchy &amp; Modern L1/L2 Caches</h2>
+    <div class="callout">
+      <p>Constructing <code>RAM64</code> from eight <code>RAM8</code> banks illustrates the fundamental engineering trade-off governing real processor memory hierarchies: <strong>capacity versus access latency</strong>. As memory capacity scales up, address decoding trees (<code>DMux8Way</code> / <code>Mux8Way16</code>) deepen logarithmically, wiring capacitance increases, and critical-path propagation delay grows—directly constraining maximum clock frequency.</p>
+      <p style="margin-top: 8px;">Modern CPUs resolve this bottleneck using multi-level static RAM caches (<strong>L1 and L2</strong>) positioned physically adjacent to the ALU execution pipeline:</p>
+      <ul style="margin-top: 6px;">
+        <li><strong>L1 Cache (32–64 KB, 1–4 cycles):</strong> Analogous to a small, shallow register/RAM bank wired directly to the ALU. Its compact footprint minimizes address-decode multiplexers and wire length so operands arrive within a single clock cycle, exploiting <em>temporal and spatial locality</em>.</li>
+        <li><strong>L2 Cache (256 KB–2 MB, 10–14 cycles):</strong> Organized hierarchically into multi-bank sets—just like <code>RAM64</code> partitions 64 words across eight <code>RAM8</code> sub-arrays. Splitting the physical address into <em>Tag</em>, <em>Set Index</em> (analogous to <code>address[3..5]</code>), and <em>Block Offset</em> (analogous to <code>address[0..2]</code>) enables parallel bank lookup while isolating idle sub-arrays to conserve dynamic power.</li>
+      </ul>
+    </div>
+  </div>
+  <footer class="page-footer">
+    <span>Digital Logic, Hack ALU &amp; Sequential Memory Lab Report</span>
+    <span>Page 1 of 1</span>
+  </footer>
+</section>
+</div>
+
+<script data-bard-injected="true" data-bard-page-paginator="true">'use strict';(function(){function E(a){return a.classList&&a.classList.contains("page")&&!(a.parentElement&&a.parentElement.closest(".page"))}function u(){return Array.from(r.querySelectorAll(".page")).filter(E)}function v(a){return a.querySelector(":scope > .page-content")}function t(a){return a.scrollHeight-a.clientHeight<=1}function F(a){return a&&a.children.length&&a.clientHeight?(a.lastElementChild.getBoundingClientRect().bottom-a.getBoundingClientRect().top)/a.clientHeight:0}function Q(a,b){var c=
+[[1E3,"m"],[900,"cm"],[500,"d"],[400,"cd"],[100,"c"],[90,"xc"],[50,"l"],[40,"xl"],[10,"x"],[9,"ix"],[5,"v"],[4,"iv"],[1,"i"]],d="";for(let [e,f]of c)for(;a>=e;)d+=f,a-=e;return b?d.toUpperCase():d}function R(a){var b=[];a=[...a];var c=0,d=0,e=[];for(var f of a)e.push(d),d+=f.length;for(e.push(d);c<a.length;)if(f=x.get(a[c])){d=c;for(var g=0;d<a.length&&x.get(a[d])&&x.get(a[d]).nu===f.nu;)g=g*10+x.get(a[d]).v,d++;b.push({start:e[c],end:e[d],value:g,kind:"dec",nu:f.nu});c=d}else if(!/[ivxlcdm]/i.test(a[c])||
+c!==0&&/\p{L}/u.test(a[c-1]))c++;else{for(g=c;g<a.length&&/[ivxlcdm]/i.test(a[g]);)g++;let h=a.slice(c,g).join("");if((g===a.length||!/\p{L}/u.test(a[g]))&&S.test(h)&&h.length>0){f=b;d=f.push;c=e[c];var k=e[g];let m={i:1,v:5,x:10,l:50,c:100,d:500,m:1E3},l=0,n=h.toLowerCase();for(let q=0;q<n.length;q++){let p=m[n[q]];l+=p<(m[n[q+1]]||0)?-p:p}d.call(f,{start:c,end:k,value:l,kind:"roman",upper:h===h.toUpperCase()})}c=g}return b}function z(a){return a.querySelector(":scope > .page-footer, :scope > footer")}
+function G(a){a=r.createTreeWalker(a,NodeFilter.SHOW_TEXT);for(var b=[],c="",d;d=a.nextNode();){let e=d.nodeValue,f=0;for(let g of R(e))c+=e.slice(f,g.start)+"#",f=g.end,b.push(Object.assign(g,{node:d}));c+=e.slice(f)}return{toks:b,skeleton:c.replace(/\s+/g," ").trim()}}function A(a,b,c){return b==="right"?a.length-1-c:c}function H(a,b){if(!b||b.node!==a.node)return null;var c=a.node.nodeValue;return a.start<b.start?c.slice(a.end,b.start):c.slice(b.end,a.start)}function I(a){return a!==null&&a.length<=
+12&&!/[\u2014\u2013\u2022|]|page|p\u00e1g|seite|sec|part/i.test(a)}function T(a){var b=[];a.forEach((f,g)=>{(f=z(f))&&b.push(Object.assign({pos:g},G(f)))});if(!b.length||b.some(f=>f.toks.length===0))return null;var c=Math.min(...b.map(f=>f.toks.length)),d=b.length===1?[1]:[1,-1];for(let f of["right","left"])for(let g=0;g<c;g++){let k=b.map(l=>l.toks[A(l.toks,f,g)]);if(!k.every(l=>l.kind===k[0].kind&&l.nu===k[0].nu))continue;let h=k.map((l,n)=>l.value-(b[n].pos+1));if(!h.every(l=>l===h[0]))continue;
+let m=h[0];if(b.length===1&&m!==0)continue;if(b.length===1){var e=A(b[0].toks,f,g);let l=b[0].toks[e-1],n=b[0].toks[e+1];if(l&&l.value===1&&(!n||n.value!==1)&&I(H(l,b[0].toks[e])))continue}c=0;e=null;for(let l of d){if(!b.every(q=>{var p=A(q.toks,f,g)+l;return(q=q.toks[p])&&q.value===a.length+m}))continue;let n=b.map(q=>{var p=A(q.toks,f,g);return H(q.toks[p],q.toks[p+l])});if(n.every(q=>q!==null&&q===n[0])&&I(n[0])){c=l;e=n[0];break}}return{align:f,r:g,totalRel:c,k:m,sep:e,kind:k[0].kind,nu:k[0].nu||
+null}}return null}function U(a){var b=u(),c=b.length+a.k,d=0;b.forEach((e,f)=>{if(e=z(e)){({toks:e}=G(e));var g=A(e,a.align,a.r);if(e[g]){f=[[e[g],f+1+a.k]];a.totalRel&&e[g+a.totalRel]&&f.push([e[g+a.totalRel],c]);f.sort((k,h)=>h[0].start-k[0].start);for(let [k,h]of f)f=k.node.nodeValue,e=f.slice(0,k.start),g=k.kind==="roman"?Q(h,k.upper):(new Intl.NumberFormat("en-u-nu-"+k.nu,{useGrouping:!1})).format(h),e=e+g+f.slice(k.end),e!==f&&(k.node.nodeValue=e,d++)}}});return d}function V(a){return a.tHead?
+a.tHead:(a=(a=a.tBodies[0])&&a.rows[0])&&Array.from(a.cells).every(b=>b.tagName==="TH")?a:null}function W(a){for(var b=0;b<8&&a;b++){if(a.tagName==="TABLE")return(b=a.tBodies[0])&&b.rows.length>1?{kind:"table",table:a,body:b}:null;if(a.children.length>1){b=a.firstElementChild.getBoundingClientRect();if(a.lastElementChild.getBoundingClientRect().top>=b.bottom-4)return{kind:"container",el:a};if(Array.from(a.children).some(c=>{if(c.children.length<=1)return!1;var d=c.firstElementChild.getBoundingClientRect();
+return c.lastElementChild.getBoundingClientRect().top>=d.bottom-4}))return{kind:"multicol",el:a};break}a=a.firstElementChild}return null}function B(a,b,c){for(var d=[];b&&b!==a;b=b.parentElement)d.unshift(b);if(!d.length)return{top:c,inner:c};b=a=null;for(let e of d)d=e.cloneNode(!1),d.removeAttribute("id"),a?b.appendChild(d):(a=d,c.insertBefore(d,c.firstChild)),b=d;return{top:a,inner:b}}function w(a){return a?X.test(a.tagName)?!0:a.children.length<=3&&a.querySelector("h1, h2, h3, h4, h5, h6")?a.getBoundingClientRect().height<=
+64:!1:!1}function Y(a,b,c,d){var e=0;for(let g=0;g<2E3&&!t(c)&&a.children.length>0;g++){let k=a.lastElementChild,h=a.children.length===1;var f;(f=h)||(f=c,f=(k.getBoundingClientRect().top-f.getBoundingClientRect().top)/f.clientHeight<.85);if(f){f=J(a,k,b,c);if(f.m){e+=f.m;if(d&&f.kind)for(let m of f.kind.split("+"))d.add(m);continue}if(h)break}b.insertBefore(k,b.firstChild);e++;for(d&&d.add("nested");a.children.length>1&&w(a.lastElementChild);)b.insertBefore(a.lastElementChild,b.firstChild),e++}return e}
+function J(a,b,c,d){d=d||a;var e=W(b);if(!e)return{m:0};if(e.kind==="table"){var f=V(e.table),g=f&&f.parentElement===e.body?2:1;let {top:n,inner:q}=B(a,e.table.parentElement,c);var k=e.table.cloneNode(!1);k.removeAttribute("id");e.table.tHead&&k.appendChild(e.table.tHead.cloneNode(!0));b=e.body.cloneNode(!1);var h=null;f&&f.parentElement===e.body&&(h=f.cloneNode(!0),b.appendChild(h));k.appendChild(b);for(f=0;!t(d)&&e.body.rows.length>g;)b.insertBefore(e.body.rows[e.body.rows.length-1],h?h.nextSibling:
+b.firstChild),f++;if(f&&(t(d)||a.children.length===1))return q.insertBefore(k,q.firstChild),{m:f,kind:"table-rows"};if(f)for(d=h?1:0;b.rows.length>d;)e.body.appendChild(b.rows[d]);n!==c&&n.remove();return{m:0}}if(e.kind==="multicol"){b=Array.from(e.el.children);let {top:n,inner:q}=B(a,e.el,c);e=b.map(p=>{p=p.cloneNode(!1);p.removeAttribute("id");q.appendChild(p);return p});g=0;a=a.children.length===1||Array.from(a.children).slice(0,-1).every(w);for(k=0;k<2E3&&!t(d);k++){h=-1;f=-Infinity;for(let p=
+0;p<b.length;p++){if(b[p].children.length<=(a?1:0))continue;let K=b[p].lastElementChild.getBoundingClientRect().bottom;K>f&&(f=K,h=p)}if(h<0)break;f=b[h];h=e[h];h.insertBefore(f.lastElementChild,h.firstChild);for(g++;f.children.length>0&&w(f.lastElementChild);)h.insertBefore(f.lastElementChild,h.firstChild),g++}k=b.some(p=>p.children.length>0);if(g&&k&&(t(d)||a))return{m:g,kind:"multicol"};if(g)for(d=0;d<b.length;d++)for(;e[d].firstElementChild;)b[d].appendChild(e[d].firstElementChild);n!==c&&n.remove();
+return{m:0}}var {top:m,inner:l}=B(a,e.el,c);g=new Set;b=Y(e.el,l,d,g);a=a.children.length===1||Array.from(a.children).slice(0,-1).every(w);if(b&&(t(d)||a))return e.el.tagName==="OL"&&(c=parseInt(e.el.getAttribute("start")||"1",10),l.setAttribute("start",String(c+e.el.children.length))),c=g.size?Array.from(g).join("+"):"nested",{m:b,kind:c};if(b)for(;l.firstElementChild;)e.el.appendChild(l.firstElementChild);m!==c&&m.remove();return{m:0}}function Z(a){var b=v(a),c=a.cloneNode(!1);c.removeAttribute("id");
+c.setAttribute("data-paginated","true");var d=b.cloneNode(!1);d.removeAttribute("id");c.appendChild(d);var e=z(a);e&&c.appendChild(e.cloneNode(!0));a.parentNode.insertBefore(c,a.nextSibling);a=0;e=new Set;for(let f=0;f<2E3&&!t(b)&&b.lastElementChild;f++){let g=b.lastElementChild,k=b.children.length===1||Array.from(b.children).slice(0,-1).every(w);if(k||(g.getBoundingClientRect().top-b.getBoundingClientRect().top)/b.clientHeight<.85){let h=J(b,g,d,b);if(h.m){a+=h.m;for(let m of h.kind.split("+"))e.add(m);
+continue}if(k)break}d.insertBefore(g,d.firstChild);a++;for(e.add("blocks");b.children.length>1&&w(b.lastElementChild);)d.insertBefore(b.lastElementChild,d.firstChild),a++}return a===0||d.childNodes.length===0?(c.remove(),{split:!1,kind:"unsplittable"}):{split:!0,kind:Array.from(e).join("+"),stillOverflowsPx:b.scrollHeight-b.clientHeight}}function L(a,b){var c=v(a);if(!c)return 0;for(var d=0;F(c)<.6;){let f=u()[b+1];var e=a;if(!(e&&f&&e.parentNode===f.parentNode&&e.getAttribute("class")===f.getAttribute("class")&&
+!!z(e)===!!z(f)&&v(e)&&v(f)))break;for(e=v(f);e.firstChild;)c.appendChild(e.firstChild);f.remove();d++}return d}function C(a){var b=v(a);if(!b||b.scrollHeight-b.clientHeight>165)return!1;var c=r.defaultView||window,d=c.getComputedStyle(a),e=a.style.paddingTop,f=a.style.paddingBottom,g=b.style.lineHeight,k=Array.from(b.children).slice(1),h=k.map(l=>l.style.marginTop);parseFloat(d.paddingTop)>46&&(a.style.paddingTop="12mm");parseFloat(d.paddingBottom)>31&&(a.style.paddingBottom="8mm");k.forEach(l=>
+{!w(l.previousElementSibling)&&parseFloat(c.getComputedStyle(l).marginTop)>10&&(l.style.marginTop="10px")});if(t(b))return!0;d=Array.from(b.querySelectorAll("th, td"));var m=d.map(l=>[l.style.paddingTop,l.style.paddingBottom]);b.style.lineHeight="1.32";d.forEach(l=>{var n=c.getComputedStyle(l);parseFloat(n.paddingTop)>4&&(l.style.paddingTop="4px");parseFloat(n.paddingBottom)>4&&(l.style.paddingBottom="4px")});if(t(b))return!0;b.style.lineHeight=g;d.forEach((l,n)=>{l.style.paddingTop=m[n][0];l.style.paddingBottom=
+m[n][1]});a.style.paddingTop=e;a.style.paddingBottom=f;k.forEach((l,n)=>{l.style.marginTop=h[n]});return!1}async function D(){r.fonts&&r.fonts.ready&&await r.fonts.ready;await Promise.all(Array.from(r.images).map(a=>a.complete?null:new Promise(b=>{a.onload=a.onerror=b})))}function aa(){var a=0;for(let b of Array.from(r.querySelectorAll(".page-content"))){let c=b.clientWidth;if(c)for(let d of Array.from(b.querySelectorAll("table"))){let e=!1,f=()=>d.getBoundingClientRect().width>c+1||d.scrollWidth>
+c+1,g=()=>{var k=Array.from(d.querySelectorAll("th"));return k.length<3||!k.some(h=>(r.defaultView||window).getComputedStyle(h).whiteSpace==="nowrap")?!1:Array.from(d.rows[0]?d.rows[0].cells:[]).some(h=>h.getBoundingClientRect().width<130&&h.innerText.trim().length>20)};if(f()||g())d.querySelectorAll("th").forEach(k=>{k.style.whiteSpace="normal"}),e=!0;f()&&(d.querySelectorAll("td").forEach(k=>{(r.defaultView||window).getComputedStyle(k).whiteSpace==="nowrap"&&k.innerText.trim().length>12&&(k.style.whiteSpace=
+"normal")}),e=!0);f()&&(d.style.width="100%",d.style.tableLayout="fixed",d.querySelectorAll("th, td").forEach(k=>{k.style.overflowWrap="break-word";k.style.wordBreak="break-word"}),e=!0);e&&a++}}return a}async function M(a){r=a||document;await D();a=aa();var b=u();a={pagesBefore:b.length,splits:[],merged:0,tablesFitted:a,unsplittable:0,scheme:null,footersRewritten:0};if(!b.length)return a;b=T(b);a.scheme=b;var c=0;for(let f=0;f<u().length&&c<60;f++){let g=u()[f],k=v(g);if(!k)continue;t(k)&&F(k)<.6&&
+(a.merged+=L(g,f));if(t(k))continue;if(f===u().length-1&&C(g)){a.squeezed=(a.squeezed||0)+1;continue}var d=Z(g);if(d.split){c++;a.splits.push({page:f+1,kind:d.kind});if(d=u()[f+1])a.merged+=L(d,f+1);!t(k)&&C(g)&&(a.squeezed=(a.squeezed||0)+1)}else C(g)?a.squeezed=(a.squeezed||0)+1:a.unsplittable++}var e=u();e.forEach((f,g)=>{g===e.length-1?(f.style.breakAfter="auto",f.style.pageBreakAfter="auto"):(f.style.removeProperty("break-after"),f.style.removeProperty("page-break-after"))});a.pagesAfter=e.length;
+(c||a.merged)&&b&&(a.footersRewritten=U(b));return a}function N(a){for(let b of Array.from(a||[])){if(b.type===CSSRule.MEDIA_RULE){a=b.media.mediaText;let c=a.split(",").map(d=>{d=d.trim();return/^(only\s+)?print\b/i.test(d)?d.replace(/^(only\s+)?print/i,"all"):/^(only\s+)?screen\b/i.test(d)||/^not\s+print\b/i.test(d)?"not all":d}).join(", ");c!==a&&(b.media.mediaText=c)}b.cssRules&&N(b.cssRules)}}function ba(a){for(let b of Array.from(a.styleSheets)){let c;try{c=b.cssRules}catch(d){continue}N(c)}}
+async function ca(a=300,b=2E3){r=document;await D();await new Promise(c=>{function d(){clearTimeout(e);clearTimeout(f);g.disconnect();c()}var e=setTimeout(d,a),f=setTimeout(d,b),g=new MutationObserver(()=>{clearTimeout(e);e=setTimeout(d,a)});g.observe(document.documentElement,{subtree:!0,attributes:!0,attributeFilter:["src","style"]})});await D()}function da(a){r=document;var b=u();if(!b.length)return!1;var c=b[0].parentNode;if(!b.every(f=>f.parentNode===c))return!1;a=Array.from(a.querySelectorAll(".page")).filter(E);
+if(!a.length)return!1;var d=b[b.length-1].nextSibling,e=document.createDocumentFragment();for(let f of a)e.appendChild(document.importNode(f,!0));b.forEach(f=>f.remove());c.insertBefore(e,d);return!0}function ea(a){var b=a.querySelector('style[data-bard-print-reset="true"]');b||(b=a.createElement("style"),b.setAttribute("data-bard-injected","true"),b.setAttribute("data-bard-print-reset","true"),b.textContent=":where(table) { font-size: inherit; line-height: inherit; font-weight: inherit; font-style: inherit; font-variant: inherit; } :where(.page) { width: 210mm; height: 297mm; } @media print { html, body { padding: 0 !important; margin: 0 !important; border: none !important; background: none !important; } .page { margin: 0 !important; border: none !important; break-after: page; page-break-after: always; } .page:last-of-type { break-after: auto !important; page-break-after: auto !important; } }",
+(a.head||a.documentElement).appendChild(b))}function O(a){var b=Array.from(a.querySelectorAll("style")).map(e=>e.textContent||"").join("\n").match(/@page\s*\{[^}]*\bsize\s*:\s*([^;!}]+)/i);if(b){var c=b[1].trim().replace(/\s+/g," "),d=b="";/^(?:a4\s+)?landscape$/i.test(c)?(b="297mm",d="210mm"):/^(?:a4\s+)?portrait$/i.test(c)||/^a4$/i.test(c)?(b="210mm",d="297mm"):/^letter\s+landscape$/i.test(c)?(b="11in",d="8.5in"):/^letter(?:\s+portrait)?$/i.test(c)?(b="8.5in",d="11in"):(c=c.split(" "),c.length===
+2&&/^[\d.]+(mm|cm|in|pt|px)$/i.test(c[0])&&/^[\d.]+(mm|cm|in|pt|px)$/i.test(c[1])&&(b=c[0],d=c[1]));b&&d&&(c=a.querySelector('style[data-bard-page-size-sync="true"]'),c||(c=a.createElement("style"),c.setAttribute("data-bard-injected","true"),c.setAttribute("data-bard-page-size-sync","true"),(a.head||a.documentElement).appendChild(c)),c.textContent=`.page { width: ${b} !important; height: ${d} !important; }`)}}async function fa(){ea(document);O(document);var a=document.createElement("iframe");a.setAttribute("aria-hidden",
+"true");a.setAttribute("tabindex","-1");a.style.cssText="position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;visibility:hidden;pointer-events:none;";document.body.appendChild(a);try{let b=null;try{b=a.contentDocument}catch(h){b=null}if(!b){let h=performance.now(),m=await M(document);m.ms=Math.round(performance.now()-h);m.measuredInFrame=!1;m.applied=!!(m.splits.length||m.merged||m.squeezed||m.tablesFitted);return m}let c=document.documentElement.cloneNode(!0);c.querySelectorAll("script").forEach(h=>
+h.remove());c.removeAttribute("data-bard-pagination-done");b.replaceChild(b.adoptNode(c),b.documentElement);let d=Array.from(b.querySelectorAll('link[rel="stylesheet"]'));await Promise.all(d.map(h=>h.sheet?Promise.resolve():new Promise(m=>{h.addEventListener("load",m,{once:!0});h.addEventListener("error",m,{once:!0});setTimeout(m,1500)})));ba(b);O(b);let e=b.querySelector(".page");if(e&&b.defaultView){let h=b.defaultView.getComputedStyle(e),m=Math.round(parseFloat(h.width))||794,l=Math.round(parseFloat(h.height))||
+1123;m>100&&l>100&&(a.style.width=m+"px",a.style.height=l+"px")}let f=performance.now(),g=await M(b);g.ms=Math.round(performance.now()-f);g.measuredInFrame=!0;(g.splits.length||g.merged||g.squeezed||g.tablesFitted)&&da(b)&&(g.applied=!0);r=document;let k=u();k.forEach((h,m)=>{m===k.length-1?(h.style.breakAfter="auto",h.style.pageBreakAfter="auto"):(h.style.removeProperty("break-after"),h.style.removeProperty("page-break-after"))});return g}finally{a.remove(),r=document}}async function P(){var a=document.documentElement;
+try{if(r=document,u().length){await ca();var b=await fa(),c={};for(let e of b.splits)for(let f of e.kind.split("+"))c[f]=(c[f]||0)+1;b.merged&&(c["underflow-merge"]=b.merged);var d={pagesBefore:b.pagesBefore,pagesAfter:b.pagesAfter===void 0?b.pagesBefore:b.pagesAfter,splits:b.splits.length,kinds:c,unsplittable:b.unsplittable,footerScheme:!!b.scheme,footersRewritten:b.footersRewritten,applied:!!b.applied,measuredInFrame:!!b.measuredInFrame,ms:b.ms};window.__bardPagePaginatorReport=d;console.info("[bard-page-paginator]",
+JSON.stringify(d));a.setAttribute("data-bard-pagination-done","1")}else a.setAttribute("data-bard-pagination-done","skipped")}catch(e){console.error("[bard-page-paginator] failed",e),a.setAttribute("data-bard-pagination-done","error")}}if(!window.__bardPagePaginatorStarted){window.__bardPagePaginatorStarted=!0;var r=document,X=/^H[1-6]$/,y="latn arab arabext beng deva fullwide gujr guru khmr knda laoo mlym mymr orya tamldec telu thai tibt hanidec".split(" "),x=new Map;for(let a of y){let b;try{b=
+new Intl.NumberFormat("en-u-nu-"+a,{useGrouping:!1})}catch(c){continue}for(y=0;y<=9;y++){let c=b.format(y);[...c].length!==1||x.has(c)||x.set(c,{nu:a,v:y})}}var S=/^(m{0,3})(cm|cd|d?c{0,3})(xc|xl|l?x{0,3})(ix|iv|v?i{0,3})$/i;document.readyState==="complete"?P():window.addEventListener("load",P,{once:!0})}})();
+</script><script data-bard-injected="true">
+(function() {
+  async function fetchFifeImageBlobUsingAlr(urlString) {
+    if (urlString.startsWith('blob:') || urlString.startsWith('data:')) {
+      throw new Error('Input URL is already a blob or data URL.');
+    }
+    var url = new URL(urlString, window.location.href);
+    url.searchParams.set('alr', 'yes');
+    for (var i = 0; i < 5; i++) {
+      var response = await fetch(url.toString(), {credentials: 'include'});
+      if (!response.ok) {
+        throw new Error('Fetch received not OK response: ' + response.status);
+      }
+      var contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.startsWith('text/plain')) {
+        var blob = await response.blob();
+        if (blob.size > 0 && blob.type.startsWith('image/')) {
+          return blob;
+        }
+        throw new Error('Fetched blob is not a valid image.');
+      }
+      url = new URL(await response.text());
+    }
+    throw new Error('Exceeded maximum number of redirects.');
+  }
+
+  async function updateImageSourcesUsingAlr() {
+    var imgs = Array.from(document.querySelectorAll('img'));
+    await Promise.all(imgs.map(async function(img) {
+      if (img.src && img.src.includes('googleusercontent')) {
+        try {
+          var blob = await fetchFifeImageBlobUsingAlr(img.src);
+          img.src = URL.createObjectURL(blob);
+        } catch (e) {}
+      }
+    }));
+
+    var elements = document.querySelectorAll('[style*="googleusercontent"]');
+    var urlRegex = /url\((['"]?)(https?:\/\/.*?googleusercontent.*?)\1\)/;
+    await Promise.all(Array.from(elements).map(async function(el) {
+      var bg = el.style.backgroundImage;
+      var match = bg ? bg.match(urlRegex) : null;
+      if (match && match[2]) {
+        try {
+          var blob = await fetchFifeImageBlobUsingAlr(match[2]);
+          var blobUrl = URL.createObjectURL(blob);
+          el.style.backgroundImage = bg.replace(match[2], blobUrl);
+        } catch (e) {}
+      }
+    }));
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', updateImageSourcesUsingAlr);
+  } else {
+    updateImageSourcesUsingAlr();
+  }
+})();
+</script></body></html>

@@ -1,0 +1,47 @@
+Q-4
+Trace the stack of machine-level operations for a simple Hack program
+
+that includes I/O (keyboard read or screen write). Explain how memory-
+
+mapped I/O works at the binary level.
+
+
+
+
+
+
+Hardware Decoding Mechanism (Memory.hdl)
+When the CPU executes an instruction referencing M (where address = A[0..14]):
+address[14] routes the load write-enable signal via a DMux: if address[14] == 0, RAM16K is enabled; if address[14] == 1 and address[13] == 0, the Screen chip is enabled.
+On a read, a Mux4Way16 controlled by address[13..14] selects whether inM fed into the CPU comes from RAM16K (00/01), the Screen buffer (10), or the Keyboard register (11).
+Writing 0xFFFF (-1 in 2's complement: 1111111111111111) to address 16384 (0100000000000000 in 15-bit binary) flips 16 adjacent pixels in the top-left corner of the monitor to black on the very next display refresh cycle.
+2. Machine-Level Execution Trace (Keyboard Read $\rightarrow$ Screen Write)
+Consider a Hack program that polls the keyboard (@KBD = 24576) until any key is pressed, and then draws a solid 16-pixel black line at the top-left of the screen (@SCREEN = 16384):
+// ROM[0..7]: Wait for keypress, then draw 16 black pixels at top-left of screen
+(POLL)
+@KBD            // ROM[0]: A = 24576 (0x6000)
+D=M             // ROM[1]: D = RAM[24576] (read keyboard scan code)
+@POLL           // ROM[2]: A = 0
+D;JEQ           // ROM[3]: If D == 0 (no key pressed), loop back to ROM[0]
+
+@SCREEN         // ROM[4]: A = 16384 (0x4000)
+M=-1            // ROM[5]: RAM[16384] = -1 (0xFFFF -> 16 black pixels)
+
+(END)
+@END            // ROM[6]: A = 6
+0;JMP           // ROM[7]: Halt
+Step-by-Step Machine-Level Stack Trace
+Assume initially no key is pressed (RAM[24576] = 0), and during the second poll cycle the user presses 'A' (ASCII 65 = 0x0041):
+Cycle	PC	Assembly	16-Bit Binary Instruction	Hardware Control & Dataflow Activity	A Register	D Register	Target Memory / I/O Effect
+1	0	@KBD	0110000000000000	Opcode 0 (A-inst): loads 24576 into A; addressM becomes 110000000000000.	24576	0	address[13..14] = 11 selects Keyboard on data bus.
+2	1	D=M	1111110000010000	Opcode 111, a=1, comp=110000 (M), dest=010 (D): ALU passes inM (0) into D.	24576	0	Reads RAM[24576] = 0 (no key pressed).
+3	2	@POLL	0000000000000000	Opcode 0: loads jump target ROM address 0 into A.	0	0	—
+4	3	D;JEQ	1110001100000010	comp=001100 (D), jump=010 (JEQ): ALU outputs D=0, asserts zr=1; PC loads A (0).	0	0	Jump taken $\rightarrow$ PC resets to 0.
+5	0	@KBD	0110000000000000	Loads 24576 into A again. (User presses 'A', hardware sets RAM[24576] = 65).	24576	0	Keyboard chip holds 0000000001000001 (65).
+6	1	D=M	1111110000010000	Reads inM from Keyboard register (65) into D.	24576	65	D updated to 65 (0x0041).
+7	2	@POLL	0000000000000000	Loads 0 into A.	0	65	—
+8	3	D;JEQ	1110001100000010	ALU evaluates D = 65 (zr=0, ng=0); JEQ condition fails; PC increments to 4.	0	65	Jump not taken $\rightarrow$ falls through to PC = 4.
+9	4	@SCREEN	0100000000000000	Opcode 0: loads 16384 into A; addressM becomes 100000000000000.	16384	65	address[13..14] = 10 routes bus to Screen chip.
+10	5	M=-1	1110111010001000	comp=111010 (-1), dest=001 (M): ALU outputs 1111111111111111; writeM (load) asserted.	16384	65	Screen[0] (RAM[16384]) latches 0xFFFF $\rightarrow$ 16 pixels turn black.
+11	6	@END	0000000000000110	Loads halt address 6 into A.	6	65	—
+12	7	0;JMP	1110101010000111	comp=101010 (0), jump=111 (JMP): unconditional jump to PC = 6.	6	65	Program halts safely while pixels remain latched.

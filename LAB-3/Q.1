@@ -1,0 +1,168 @@
+Write Hack assembly programs for: (a) arithmetic operations, (b)
+
+branching with conditional jumps, and (c) a simple loop. Run each on the
+
+CPU Emulator and capture output.
+
+
+
+(a) Arithmetic Operations (Arithmetic.asm)
+Objective: Compute the expression $\text{RAM}[2] = (\text{RAM}[0] + \text{RAM}[1]) - 5$ using the D and A registers, and halt cleanly in an infinite loop.
+Hack Assembly Code (Arithmetic.asm)
+// Computes RAM[2] = (RAM[0] + RAM[1]) - 5
+
+@R0          // A = 0
+D=M          // D = RAM[0]
+
+@R1          // A = 1
+D=D+M        // D = RAM[0] + RAM[1]
+
+@5           // A = 5 (constant)
+D=D-A        // D = (RAM[0] + RAM[1]) - 5
+
+@R2          // A = 2
+M=D          // RAM[2] = D
+
+(END)
+@END
+0;JMP        // Infinite loop to terminate program safely
+
+
+
+
+CPU Emulator Execution & Output Capture
+Initial Setup (RAM): Set RAM[0] = 15, RAM[1] = 10
+Execution Trace:
+D loads 15 from RAM[0].
+D=D+M adds 10 from RAM[1] $\rightarrow$ D = 25.
+@5 followed by D=D-A subtracts 5 $\rightarrow$ D = 20.
+@R2 and M=D stores 20 into RAM[2].
+Captured CPU Emulator State:
+Registers:  A = 8 (END) | D = 20 | PC = 8
+RAM[0]:     15
+RAM[1]:     10
+RAM[2]:     20   <-- Computed Output
+
+
+
+
+(b) Branching with Conditional Jumps (Max.asm)
+Objective: Compare two signed integers stored in RAM[0] and RAM[1], and store the larger value in RAM[2] using conditional jump mnemonics (JGT and JMP).
+Hack Assembly Code (Max.asm)
+// Computes RAM[2] = max(RAM[0], RAM[1])
+
+@R0
+D=M          // D = RAM[0]
+@R1
+D=D-M        // D = RAM[0] - RAM[1]
+
+@FIRST_GREATER
+D;JGT        // If (RAM[0] - RAM[1]) > 0, jump to FIRST_GREATER
+
+// Otherwise, RAM[1] >= RAM[0]
+@R1
+D=M          // D = RAM[1]
+@STORE
+0;JMP        // Unconditional jump to STORE
+
+(FIRST_GREATER)
+@R0
+D=M          // D = RAM[0]
+
+(STORE)
+@R2
+M=D          // RAM[2] = larger value
+
+(END)
+@END
+0;JMP        // Halt
+
+
+
+
+
+
+
+
+
+
+
+
+
+CPU Emulator Execution & Output Capture
+Two test cases were run on the CPU Emulator to verify both branch paths:
+Test Case 1 (RAM[0] < RAM[1] — Fall-through branch):
+Input: RAM[0] = 12, RAM[1] = 27
+Execution: D = 12 - 27 = -15. Since -15 is not > 0, D;JGT does not jump; execution loads RAM[1] (27) and jumps to (STORE).
+Captured Output:
+Registers:  A = 14 (END) | D = 27 | PC = 14
+RAM[0]:     12
+RAM[1]:     27
+RAM[2]:     27   <-- Max value stored
+Test Case 2 (RAM[0] > RAM[1] — Taken jump branch):
+Input: RAM[0] = 42, RAM[1] = 19
+Execution: D = 42 - 19 = 23. Since 23 > 0, D;JGT jumps directly to (FIRST_GREATER) (ROM address 10), loads 42, and writes to RAM[2].
+Captured Output:
+Registers:  A = 14 (END) | D = 42 | PC = 14
+RAM[0]:     42
+RAM[1]:     19
+RAM[2]:     42   <-- Max value stored
+(c) Simple Loop (Sum1ToN.asm)
+Objective: Calculate the cumulative sum $\sum_{i=1}^{N} i = 1 + 2 + \dots + N$, where $N$ is stored in RAM[0], and write the final sum to RAM[1] using user-defined variables (@i, @sum) and a loop condition (JGT).
+Hack Assembly Code (Sum1ToN.asm)
+// Computes RAM[1] = 1 + 2 + ... + RAM[0]
+
+@i
+M=1          // i = 1 (allocated at RAM[16])
+@sum
+M=0          // sum = 0 (allocated at RAM[17])
+
+(LOOP)
+@i
+D=M          // D = i
+@R0
+D=D-M        // D = i - N
+@STOP
+D;JGT        // If (i - N) > 0 (i.e., i > N), exit loop
+
+@sum
+D=M          // D = sum
+@i
+D=D+M        // D = sum + i
+@sum
+M=D          // sum = sum + i
+
+@i
+M=M+1        // i = i + 1
+
+@LOOP
+0;JMP        // Repeat loop
+
+(STOP)
+@sum
+D=M          // D = final sum
+@R1
+M=D          // RAM[1] = sum
+
+(END)
+@END
+0;JMP        // Halt
+CPU Emulator Execution & Output Capture
+Initial Setup (RAM): Set RAM[0] = 5 ($N = 5$)
+Symbol Table Allocation by Assembler:
+i $\rightarrow$ RAM[16]
+sum $\rightarrow$ RAM[17]
+LOOP $\rightarrow$ ROM[4], STOP $\rightarrow$ ROM[18], END $\rightarrow$ ROM[22]
+Iteration Trace:
+Iteration 1 (i = 1): sum = 0 + 1 = 1, i becomes 2
+Iteration 2 (i = 2): sum = 1 + 2 = 3, i becomes 3
+Iteration 3 (i = 3): sum = 3 + 3 = 6, i becomes 4
+Iteration 4 (i = 4): sum = 6 + 4 = 10, i becomes 5
+Iteration 5 (i = 5): sum = 10 + 5 = 15, i becomes 6
+Iteration 6 (i = 6): i - N = 6 - 5 = 1 > 0 $\rightarrow$ jumps to (STOP), copies sum (15) into RAM[1].
+Captured CPU Emulator State:
+Registers:  A = 22 (END) | D = 15 | PC = 22
+RAM[0]:     5    (Input N)
+RAM[1]:     15   <-- Final Output (1 + 2 + 3 + 4 + 5)
+RAM[16]:    6    (Variable i after loop termination)
+RAM[17]:    15   (Variable sum)

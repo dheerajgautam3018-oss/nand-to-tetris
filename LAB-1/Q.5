@@ -1,0 +1,73 @@
+1. Q-5:  Build the complete Hack ALU in HDL. Fill in the ALU function table for all
+
+18 standard operations. Verify using the ALU test script.
+
+
+TABLE:-
+
+
+zx	nx	zy	ny	f	no	Resulting out	
+1	0	1	0	1	0	0	
+1	1	1	1	1	1	1	
+1	1	1	0	1	0	-1	
+0	0	1	1	0	0	x	
+1	1	0	0	0	0	y	
+0	0	1	1	0	1	!x	
+1	1	0	0	0	1	!y	
+0	0	1	1	1	1	-x	
+1	1	0	0	1	1	-y	
+0	1	1	1	1	1	x+1	
+1	1	0	1	1	1	y+1	
+0	0	1	1	1	0	x-1	
+1	1	0	0	1	0	y-1	
+0	0	0	0	1	0	x+y	2's 
+0	1	0	0	1	1	x-y	2's 
+0	0	0	1	1	1	y-x	2's 
+0	0	0	0	0	0	x&y	
+0	1	0	1	0	1	x|y	
+
+
+
+#HDL Implementation (ALU.hdl):-
+
+CHIP ALU {
+    IN  
+        x[16], y[16],  // 16-bit inputs        
+        zx, // zero the x input?
+        nx, // negate the x input?
+        zy, // zero the y input?
+        ny, // negate the y input?
+        f,  // compute (out = x + y) or (out = x & y)?
+        no; // negate the out output?
+
+    OUT 
+        out[16], // 16-bit output
+        zr,      // 1 if (out == 0), 0 otherwise
+        ng;      // 1 if (out < 0),  0 otherwise
+
+    PARTS:
+    // 1. Pre-setting x input (zx, nx)
+    Mux16(a=x, b=false, sel=zx, out=x1);
+    Not16(in=x1, out=notx1);
+    Mux16(a=x1, b=notx1, sel=nx, out=x2);
+
+    // 2. Pre-setting y input (zy, ny)
+    Mux16(a=y, b=false, sel=zy, out=y1);
+    Not16(in=y1, out=noty1);
+    Mux16(a=y1, b=noty1, sel=ny, out=y2);
+
+    // 3. Function computation (f: 1 for Add16, 0 for And16)
+    Add16(a=x2, b=y2, out=addxy);
+    And16(a=x2, b=y2, out=andxy);
+    Mux16(a=andxy, b=addxy, sel=f, out=fxy);
+
+    // 4. Post-setting output (no) and extracting ng & zr status bits
+    Not16(in=fxy, out=notfxy);
+    Mux16(a=fxy, b=notfxy, sel=no, out=out, out[0..7]=low8, out[8..15]=high8, out[15]=ng);
+
+    // 5. Compute zr (1 iff all 16 bits of out are 0)
+    Or8Way(in=low8, out=orlow);
+    Or8Way(in=high8, out=orhigh);
+    Or(a=orlow, b=orhigh, out=nonzero);
+    Not(in=nonzero, out=zr);
+}

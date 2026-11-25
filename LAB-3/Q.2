@@ -1,0 +1,85 @@
+ Q-2
+Hand-encode two Hack assembly programs to binary using the A-
+
+instruction and C-instruction formats. Show the comp/dest/jump field
+
+breakdowns.
+
+
+
+
+
+Field Encoding Reference Key
+a + comp (a c1c2c3c4c5c6):
+D $\rightarrow$ 0 001100
+M (a=1) $\rightarrow$ 1 110000
+D+M (a=1) $\rightarrow$ 1 000010
+D-M (a=1) $\rightarrow$ 1 010011
+0 $\rightarrow$ 0 101010
+dest (d1 d2 d3 = A D M):
+null $\rightarrow$ 000 | M $\rightarrow$ 001 | D $\rightarrow$ 010
+jump (j1 j2 j3 = < = >):
+null $\rightarrow$ 000 | JGT (> 0) $\rightarrow$ 001 | JMP (unconditional) $\rightarrow$ 111
+Program 1: Addition (Add.asm — Computes RAM[2] = RAM[0] + RAM[1])
+Assembly Source & Symbol Resolution
+Predefined symbols R0, R1, and R2 resolve to 0, 1, and 2, while (END) resolves to ROM address 6.
+ROM Addr	Assembly Instruction	Resolved Instruction	Type
+0	@R0	@0	A
+1	D=M	D=M	C
+2	@R1	@1	A
+3	D=D+M	D=D+M	C
+4	@R2	@2	A
+5	M=D	M=D	C
+6	(END) $\rightarrow$ @END	@6	A
+7	0;JMP	0;JMP	C
+Binary Field Breakdown
+ROM	Instruction	Opcode	a	comp (c1..c6)	dest (d1..d3)	jump (j1..j3)	Complete 16-Bit Binary Word
+0	@0	0	—	000000000000000 (15-bit value = 0)	—	—	0000000000000000
+1	D=M	111	1	110000 (M)	010 (D)	000 (null)	1111110000010000
+2	@1	0	—	000000000000001 (15-bit value = 1)	—	—	0000000000000001
+3	D=D+M	111	1	000010 (D+M)	010 (D)	000 (null)	1111000010010000
+4	@2	0	—	000000000000010 (15-bit value = 2)	—	—	0000000000000010
+5	M=D	111	0	001100 (D)	001 (M)	000 (null)	1110001100001000
+6	@6	0	—	000000000000110 (15-bit value = 6)	—	—	0000000000000110
+7	0;JMP	111	0	101010 (0)	000 (null)	111 (JMP)	1110101010000111
+Program 2: Conditional Branching (Max.asm — Computes RAM[2] = max(RAM[0], RAM[1]))
+Assembly Source & Symbol Resolution
+During Pass 1 of the assembler, label symbols map to the ROM address of the instruction immediately following them:
+(FIRST_GREATER) $\rightarrow$ ROM address 10
+(STORE) $\rightarrow$ ROM address 12
+(END) $\rightarrow$ ROM address 14
+ROM Addr	Assembly Instruction	Resolved Instruction	Type
+0	@R0	@0	A
+1	D=M	D=M	C
+2	@R1	@1	A
+3	D=D-M	D=D-M	C
+4	@FIRST_GREATER	@10	A
+5	D;JGT	D;JGT	C
+6	@R1	@1	A
+7	D=M	D=M	C
+8	@STORE	@12	A
+9	0;JMP	0;JMP	C
+10	(FIRST_GREATER) $\rightarrow$ @R0	@0	A
+11	D=M	D=M	C
+12	(STORE) $\rightarrow$ @R2	@2	A
+13	M=D	M=D	C
+14	(END) $\rightarrow$ @END	@14	A
+15	0;JMP	0;JMP	C
+Binary Field Breakdown
+ROM	Instruction	Opcode	a	comp (c1..c6)	dest (d1..d3)	jump (j1..j3)	Complete 16-Bit Binary Word
+0	@0	0	—	000000000000000 (val = 0)	—	—	0000000000000000
+1	D=M	111	1	110000 (M)	010 (D)	000 (null)	1111110000010000
+2	@1	0	—	000000000000001 (val = 1)	—	—	0000000000000001
+3	D=D-M	111	1	010011 (D-M)	010 (D)	000 (null)	1111010011010000
+4	@10	0	—	000000000001010 (val = 10)	—	—	0000000000001010
+5	D;JGT	111	0	001100 (D)	000 (null)	001 (JGT)	1110001100000001
+6	@1	0	—	000000000000001 (val = 1)	—	—	0000000000000001
+7	D=M	111	1	110000 (M)	010 (D)	000 (null)	1111110000010000
+8	@12	0	—	000000000001100 (val = 12)	—	—	0000000000001100
+9	0;JMP	111	0	101010 (0)	000 (null)	111 (JMP)	1110101010000111
+10	@0	0	—	000000000000000 (val = 0)	—	—	0000000000000000
+11	D=M	111	1	110000 (M)	010 (D)	000 (null)	1111110000010000
+12	@2	0	—	000000000000010 (val = 2)	—	—	0000000000000010
+13	M=D	111	0	001100 (D)	001 (M)	000 (null)	1110001100001000
+14	@14	0	—	000000000001110 (val = 14)	—	—	0000000000001110
+15	0;JMP	111	0	101010 (0)	000 (null)	111 (JMP)	1110101010000111
